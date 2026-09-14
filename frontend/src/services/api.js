@@ -1,14 +1,13 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
-// Automatically inject Manager PIN header if authenticated
 api.interceptors.request.use((config) => {
   const managerPin = localStorage.getItem('smart_retail_manager_pin');
   if (managerPin) {
