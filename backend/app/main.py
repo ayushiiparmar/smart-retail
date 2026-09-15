@@ -11,6 +11,7 @@ from app.routes.customer_routes import router as customer_router
 from app.routes.sales_routes import router as sales_router
 from app.routes.analytics_routes import router as analytics_router
 from app.routes.ai_routes import router as ai_router
+from app.routes.auth_routes import router as auth_router
 
 # Auto-create tables if missing
 Base.metadata.create_all(bind=engine)
@@ -24,7 +25,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows Vercel preview & production URLs
-    allow_credentials=True,
+    # `allow_origins=["*"]` combined with `allow_credentials=True` is invalid
+    # per the CORS spec (browsers will reject it). The app doesn't use
+    # cookies for auth - the manager PIN travels as a custom header - so
+    # credentialed requests aren't needed.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -37,6 +42,7 @@ app.include_router(customer_router)
 app.include_router(sales_router)
 app.include_router(analytics_router)
 app.include_router(ai_router)
+app.include_router(auth_router)
 
 @app.get("/")
 def health_check():
@@ -65,9 +71,10 @@ def database_health(db: Session = Depends(get_db)):
 from app.models.product import Product
 from app.models.sale import Sale
 from app.models.sale_item import SaleItem
+from app.dependencies import verify_manager_access
 
 @app.post("/api/admin/reset-stock")
-def reset_demo_stock(db: Session = Depends(get_db)):
+def reset_demo_stock(db: Session = Depends(get_db), _: bool = Depends(verify_manager_access)):
     """Resets all product stock levels back to standard demo values and clears test sales."""
     # Reset default stock values
     default_stocks = {

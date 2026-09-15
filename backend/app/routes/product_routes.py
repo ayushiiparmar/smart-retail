@@ -142,7 +142,12 @@ def delete_product(
     return None
 
 @router.patch("/{product_id}/stock", response_model=ProductResponse)
-def adjust_stock(product_id: int, adj: StockAdjustment, db: Session = Depends(get_db)):
+def adjust_stock(
+    product_id: int,
+    adj: StockAdjustment,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_manager_access)
+):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")

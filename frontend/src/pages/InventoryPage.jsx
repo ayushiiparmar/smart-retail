@@ -27,6 +27,7 @@ import {
   getCategories, 
   getSuppliers 
 } from '../services/productApi';
+import api from '../services/api';
 
 export default function InventoryPage() {
   const [products, setProducts] = useState([]);
@@ -38,8 +39,17 @@ export default function InventoryPage() {
   const [stockTab, setStockTab] = useState('all'); // all, in_stock, low_stock, out_of_stock
   const [notification, setNotification] = useState(null);
 
-  // Manager Mode Authorization Check
-  const isManager = localStorage.getItem('smart_retail_manager_pin') === '1234';
+  // Manager Mode Authorization Check - verified against the server rather
+  // than comparing the stored PIN to a hardcoded value on the client.
+  const [isManager, setIsManager] = useState(false);
+
+  useEffect(() => {
+    const storedPin = localStorage.getItem('smart_retail_manager_pin');
+    if (!storedPin) return;
+    api.post('/api/auth/verify-pin')
+      .then(() => setIsManager(true))
+      .catch(() => setIsManager(false));
+  }, []);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -238,6 +248,10 @@ export default function InventoryPage() {
   };
 
   const handleStockAdjustment = async (id, name, delta) => {
+    if (!isManager) {
+      showToast('Manager Access Required: Unlock Manager Mode to adjust stock.', 'error');
+      return;
+    }
     try {
       await adjustStock(id, delta);
       showToast(`Updated stock for ${name}`);

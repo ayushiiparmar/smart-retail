@@ -83,7 +83,7 @@ def process_checkout(sale_in: SaleCreate, db: Session = Depends(get_db)):
         db.flush()  # Populates sale.id for line items
 
         # Create Sale Items
-        detail_items_list = []
+        sale_items = []
         for it in items_to_create:
             sale_item = SaleItem(
                 sale_id=sale.id,
@@ -93,17 +93,23 @@ def process_checkout(sale_in: SaleCreate, db: Session = Depends(get_db)):
                 line_total=it["line_total"]
             )
             db.add(sale_item)
-            detail_items_list.append(SaleItemDetail(
-                id=0,  # placeholder before commit
-                product_id=it["product_id"],
-                product_name=it["product_name"],
-                unit_price=it["unit_price"],
-                quantity=it["quantity"],
-                line_total=it["line_total"]
-            ))
+            sale_items.append((sale_item, it["product_name"]))
 
         db.commit()
         db.refresh(sale)
+
+        # Each sale_item now has its real, DB-generated id after commit.
+        detail_items_list = [
+            SaleItemDetail(
+                id=sale_item.id,
+                product_id=sale_item.product_id,
+                product_name=product_name,
+                unit_price=sale_item.unit_price,
+                quantity=sale_item.quantity,
+                line_total=sale_item.line_total
+            )
+            for sale_item, product_name in sale_items
+        ]
 
         return SaleReceiptResponse(
             id=sale.id,

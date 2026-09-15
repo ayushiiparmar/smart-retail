@@ -10,10 +10,16 @@ function TopNav() {
   const [pinError, setPinError] = useState('');
 
   useEffect(() => {
-    // Check if manager session exists
+    // Check if a stored PIN is still valid by asking the server, instead of
+    // comparing it to a hardcoded value on the client.
     const storedPin = localStorage.getItem('smart_retail_manager_pin');
-    if (storedPin === '1234') {
-      setIsManager(true);
+    if (storedPin) {
+      api.post('/api/auth/verify-pin')
+        .then(() => setIsManager(true))
+        .catch(() => {
+          localStorage.removeItem('smart_retail_manager_pin');
+          setIsManager(false);
+        });
     }
 
     api.get('/api/health/db')
@@ -43,16 +49,21 @@ function TopNav() {
     }
   };
 
-  const handlePinSubmit = (e) => {
+  const handlePinSubmit = async (e) => {
     e.preventDefault();
-    if (pinInput.trim() === '1234') {
-      localStorage.setItem('smart_retail_manager_pin', '1234');
+    const candidate = pinInput.trim();
+    try {
+      // Ask the server to validate the PIN rather than checking it client-side.
+      await api.post('/api/auth/verify-pin', null, {
+        headers: { 'X-Manager-PIN': candidate }
+      });
+      localStorage.setItem('smart_retail_manager_pin', candidate);
       setIsManager(true);
       setShowPinModal(false);
       setPinError('');
       window.location.reload();
-    } else {
-      setPinError('Invalid Manager PIN. Default demo PIN is 1234.');
+    } catch (err) {
+      setPinError('Invalid Manager PIN.');
     }
   };
 
