@@ -59,7 +59,11 @@ export default function SettingsPage() {
       showToast('Demo stock levels restored to original values!');
       fetchHealth();
     } catch (err) {
-      showToast('Failed to reset demo stock.', 'error');
+      if (err.response?.status === 403) {
+        showToast('Manager Access Required: Unlock Manager Mode to reset demo stock.', 'error');
+      } else {
+        showToast('Failed to reset demo stock.', 'error');
+      }
     } finally {
       setResetting(false);
     }

@@ -1,40 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
-from pydantic import BaseModel
+from typing import List
 
 from app.database.connection import get_db
 from app.models.supplier import Supplier
 from app.models.product import Product
 from app.dependencies import verify_manager_access
+from app.schemas.supplier_schemas import SupplierCreate, SupplierUpdate, SupplierResponse
 
 router = APIRouter(prefix="/api/suppliers", tags=["Suppliers"])
-
-# Pydantic Schemas
-class SupplierBase(BaseModel):
-    name: str
-    company: str
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-
-class SupplierCreate(SupplierBase):
-    pass
-
-class SupplierUpdate(BaseModel):
-    name: Optional[str] = None
-    company: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-
-class SupplierResponse(SupplierBase):
-    id: int
-    created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 # Routes
 @router.get("", response_model=List[SupplierResponse])
