@@ -32,6 +32,7 @@ class ProductSimpleForSupplier(BaseModel):
 class SupplierResponse(SupplierBase):
     id: int
     created_at: Optional[datetime] = None
+    product_count: int = 0
 
     class Config:
         from_attributes = True
