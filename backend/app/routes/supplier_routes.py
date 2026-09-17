@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 
 from app.database.connection import get_db
@@ -13,14 +14,29 @@ router = APIRouter(prefix="/api/suppliers", tags=["Suppliers"])
 # Routes
 @router.get("", response_model=List[SupplierResponse])
 def list_suppliers(db: Session = Depends(get_db)):
-    return db.query(Supplier).order_by(Supplier.company.asc()).all()
+    rows = (
+        db.query(Supplier, func.count(Product.id).label("product_count"))
+        .outerjoin(Product, Product.supplier_id == Supplier.id)
+        .group_by(Supplier.id)
+        .order_by(Supplier.company.asc())
+        .all()
+    )
+    results = []
+    for supplier, product_count in rows:
+        item = SupplierResponse.model_validate(supplier)
+        item.product_count = product_count
+        results.append(item)
+    return results
 
 @router.get("/{supplier_id}", response_model=SupplierResponse)
 def get_supplier(supplier_id: int, db: Session = Depends(get_db)):
     supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
     if not supplier:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Supplier not found.")
-    return supplier
+    product_count = db.query(func.count(Product.id)).filter(Product.supplier_id == supplier_id).scalar()
+    result = SupplierResponse.model_validate(supplier)
+    result.product_count = product_count
+    return result
 
 @router.get("/{supplier_id}/products")
 def get_supplier_products(supplier_id: int, db: Session = Depends(get_db)):

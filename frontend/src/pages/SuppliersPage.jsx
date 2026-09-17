@@ -20,12 +20,26 @@ import {
   deleteSupplier, 
   getSupplierProducts 
 } from '../services/supplierApi';
+import api from '../services/api';
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [notification, setNotification] = useState(null);
+
+  // Manager Mode Authorization Check - verified against the server, same
+  // approach as InventoryPage, so Add/Edit/Delete only show when the
+  // action will actually be allowed by the backend.
+  const [isManager, setIsManager] = useState(false);
+
+  useEffect(() => {
+    const storedPin = localStorage.getItem('smart_retail_manager_pin');
+    if (!storedPin) return;
+    api.post('/api/auth/verify-pin')
+      .then(() => setIsManager(true))
+      .catch(() => setIsManager(false));
+  }, []);
 
   // Add/Edit Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -99,6 +113,10 @@ export default function SuppliersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isManager) {
+      showToast('Manager Access Required: Unlock Manager Mode to save suppliers.', 'error');
+      return;
+    }
     try {
       if (editingSupplier) {
         await updateSupplier(editingSupplier.id, formData);
@@ -115,6 +133,10 @@ export default function SuppliersPage() {
   };
 
   const handleDelete = async (id, company) => {
+    if (!isManager) {
+      showToast('Manager Access Required: Unlock Manager Mode to delete suppliers.', 'error');
+      return;
+    }
     if (!window.confirm(`Are you sure you want to remove supplier "${company}"?`)) return;
     try {
       await deleteSupplier(id);
@@ -165,13 +187,15 @@ export default function SuppliersPage() {
           >
             <RefreshCw size={17} className={loading ? 'animate-spin text-indigo-600' : ''} />
           </button>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition"
-          >
-            <Plus size={18} />
-            <span>Add Supplier</span>
-          </button>
+          {isManager && (
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition"
+            >
+              <Plus size={18} />
+              <span>Add Supplier</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -216,22 +240,24 @@ export default function SuppliersPage() {
                     </h3>
                     <p className="text-xs text-slate-500 font-medium">{s.name}</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => openModal(s)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition"
-                      title="Edit Supplier"
-                    >
-                      <Edit2 size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(s.id, s.company)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
-                      title="Delete Supplier"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                  {isManager && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openModal(s)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition"
+                        title="Edit Supplier"
+                      >
+                        <Edit2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(s.id, s.company)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                        title="Delete Supplier"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Contact Information */}
