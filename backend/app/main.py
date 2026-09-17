@@ -2,7 +2,8 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from app.database.connection import engine, Base, get_db
+from app.database.connection import engine, Base, get_db, SessionLocal
+from app.database.seed_data import seed_database
 from app.models import Product, Category, Supplier, Customer, Sale
 from app.routes.product_routes import router as product_router
 from app.routes.category_routes import router as category_router
@@ -15,6 +16,20 @@ from app.routes.auth_routes import router as auth_router
 
 # Auto-create tables if missing
 Base.metadata.create_all(bind=engine)
+
+# Auto-seed demo data on startup if the database is empty. This matters
+# because Render's free tier has no Shell access to run seed.py manually,
+# so a freshly created Postgres database would otherwise stay empty forever.
+# Safe to leave in permanently: it only runs when there's no data yet.
+def _seed_if_empty():
+    db = SessionLocal()
+    try:
+        if db.query(Category).first() is None:
+            print(seed_database(db))
+    finally:
+        db.close()
+
+_seed_if_empty()
 
 app = FastAPI(
     title="Smart Retail API",
